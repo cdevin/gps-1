@@ -131,7 +131,7 @@ class PolicyOptTf(PolicyOpt):
         np.random.shuffle(idx)
 
 
-        if itr > -1:
+        if itr > 0:
             feed_dict = {}
             feed_dict[self.obs_tensor] = obs
 
