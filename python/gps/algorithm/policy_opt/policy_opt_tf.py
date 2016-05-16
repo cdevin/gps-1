@@ -57,13 +57,15 @@ class PolicyOptTf(PolicyOpt):
     def init_network(self):
         """ Helper method to initialize the tf networks used """
         tf_map_generator = self._hyperparams['network_model']
-        tf_map = tf_map_generator(dim_input=self._dO, dim_output=self._dU, batch_size=self.batch_size,
-                                  network_config=self._hyperparams['network_params'])
+        tf_map, fc_vars, last_conv_tensors = tf_map_generator(dim_input=self._dO, dim_output=self._dU, batch_size=self.batch_size,
+                                                              network_config=self._hyperparams['network_params'])
         self.obs_tensor = tf_map.get_input_tensor()
         self.action_tensor = tf_map.get_target_output_tensor()
         self.precision_tensor = tf_map.get_precision_tensor()
         self.act_op = tf_map.get_output_op()
         self.loss_scalar = tf_map.get_loss_op()
+        self.fc_vars = fc_vars
+        self.last_conv_tensors = last_conv_tensors
 
     def init_solver(self):
         """ Helper method to initialize the solver. """
@@ -72,7 +74,8 @@ class PolicyOptTf(PolicyOpt):
                                base_lr=self._hyperparams['lr'],
                                lr_policy=self._hyperparams['lr_policy'],
                                momentum=self._hyperparams['momentum'],
-                               weight_decay=self._hyperparams['weight_decay'])
+                               weight_decay=self._hyperparams['weight_decay'],
+                               fc_vars = self.fc_vars, last_conv_tensors=self.last_conv_tensors)
 
     def update(self, obs, tgt_mu, tgt_prc, tgt_wt, itr, inner_itr):
         """
@@ -127,6 +130,30 @@ class PolicyOptTf(PolicyOpt):
         average_loss = 0
         np.random.shuffle(idx)
 
+
+        if itr > -1:
+            feed_dict = {}
+            feed_dict[self.obs_tensor] = obs
+
+            num_values = obs.shape[0]
+            conv_values = self.solver.get_last_conv_values(self.sess, feed_dict, num_values, 100)
+            for i in range(self._hyperparams['fc_only_iterations'] ):
+                start_idx = int(i * self.batch_size %
+                                (batches_per_epoch * self.batch_size))
+                idx_i = idx[start_idx:start_idx+self.batch_size]
+                feed_dict = {self.obs_tensor: obs[idx_i],
+                             self.action_tensor: tgt_mu[idx_i],
+                             self.precision_tensor: tgt_prc[idx_i],
+                             self.last_conv_tensors: conv_values[idx_i]}
+
+                train_loss = self.solver(feed_dict, self.sess, device_string=self.device_string, use_fc_solver=True)
+                average_loss += train_loss
+                if i % 100 == 0 and i != 0:
+                    LOGGER.debug('tensorflow iteration %d, average loss %f',
+                                 i, average_loss / 100)
+                    print 'supervised fc_only tf loss is '
+                    print (average_loss/100)
+                    average_loss = 0
         # actual training.
         for i in range(self._hyperparams['iterations']):
             # Load in data for this batch.

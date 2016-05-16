@@ -131,6 +131,7 @@ algorithm['policy_opt']= {
         'batch_size': 25,
     },
     'iterations': 500,
+    'fc_only_iterations': 0,
 }
 
 # algorithm = {

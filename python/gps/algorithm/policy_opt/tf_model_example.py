@@ -46,16 +46,18 @@ def get_mlp_layers(mlp_input, number_layers, dimension_hidden):
         math: sigma(Wx + b)
         for each layer, where sigma is by default relu"""
     cur_top = mlp_input
+    weights = []
     for layer_step in range(0, number_layers):
         in_shape = cur_top.get_shape().dims[1].value
         cur_weight = init_weights([in_shape, dimension_hidden[layer_step]], name='w_' + str(layer_step))
         cur_bias = init_bias([dimension_hidden[layer_step]], name='b_' + str(layer_step))
+        weights += [cur_bias, cur_weight]
         if layer_step != number_layers-1:  # final layer has no RELU
             cur_top = tf.nn.relu(tf.matmul(cur_top, cur_weight) + cur_bias)
         else:
             cur_top = tf.matmul(cur_top, cur_weight) + cur_bias
 
-    return cur_top
+    return cur_top, weights
 
 
 def get_loss_layer(mlp_out, action, precision, batch_size):
@@ -79,7 +81,7 @@ def example_tf_network(dim_input=27, dim_output=7, batch_size=25, network_config
     dim_hidden.append(dim_output)
 
     nn_input, action, precision = get_input_layer(dim_input, dim_output)
-    mlp_applied = get_mlp_layers(nn_input, n_layers, dim_hidden)
+    mlp_applied, weights = get_mlp_layers(nn_input, n_layers, dim_hidden)
     loss_out = get_loss_layer(mlp_out=mlp_applied, action=action, precision=precision, batch_size=batch_size)
 
     return TfMap.init_from_lists([nn_input, action, precision], [mlp_applied], [loss_out])
@@ -154,10 +156,12 @@ def multi_modal_network(dim_input=27, dim_output=7, batch_size=25, network_confi
 
     fc_input = tf.concat(concat_dim=1, values=[conv_out_flat, state_input])
 
-    fc_output = get_mlp_layers(fc_input, n_layers, dim_hidden)
+    fc_output, fc_vars = get_mlp_layers(fc_input, n_layers, dim_hidden)
+    last_conv_tensors = [fc_input]
+
 
     loss = euclidean_loss_layer(a=action, b=fc_output, precision=precision, batch_size=batch_size)
-    return TfMap.init_from_lists([nn_input, action, precision], [fc_output], [loss])
+    return TfMap.init_from_lists([nn_input, action, precision], [fc_output], [loss]), fc_vars, last_conv_tensors
 
 
 def conv2d(img, w, b):
