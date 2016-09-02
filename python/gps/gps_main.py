@@ -1,5 +1,4 @@
 """ This file defines the main object that runs experiments. """
-
 import matplotlib as mpl
 mpl.use('Qt4Agg')
 
@@ -59,18 +58,31 @@ class GPSMain(object):
         Returns: None
         """
         itr_start = self._initialize(itr_load)
-
+        import gps.gazebo.color_block as color
+        poses = color.init_blocks()
+        all_poses = []
         for itr in range(itr_start, self._hyperparams['iterations']):
             for cond in self._train_idx:
+                poses = color.assign_poses()
+                all_poses.append(poses)
+
                 for i in range(self._hyperparams['num_samples']):
                     self._take_sample(itr, cond, i)
+
 
             traj_sample_lists = [
                 self.agent.get_samples(cond, -self._hyperparams['num_samples'])
                 for cond in self._train_idx
             ]
-            self._take_iteration(itr, traj_sample_lists)
+           # self._take_iteration(itr, traj_sample_lists)
             pol_sample_lists = self._take_policy_samples()
+            for c in range(len(traj_sample_lists)):
+                data['image_cond_'+str(c)] = traj_sample_lists[c].get(RGB_IMAGE)
+                data['blocks_cond_'+str(c)] = np.repeat(np.reshape(all_poses[c], (1,12)), 100, axis=0)
+            self.data_logger.pickle(
+                self._data_files_dir + ('block_images_itr_%02d.pkl' % itr),
+                copy.copy(data)
+            )
             self._log_data(itr, traj_sample_lists, pol_sample_lists)
 
         self._end()
@@ -216,6 +228,9 @@ class GPSMain(object):
         if 'verbose_policy_trials' not in self._hyperparams:
             # AlgorithmTrajOpt
             return None
+        if self._hyperparams['verbose_policy_trials'] == 0:
+            # AlgorithmTrajOpt
+            return None
         verbose = self._hyperparams['verbose_policy_trials']
         if self.gui:
             self.gui.set_status_text('Taking policy samples.')
@@ -247,19 +262,19 @@ class GPSMain(object):
             )
         if 'no_sample_logging' in self._hyperparams['common']:
             return
-        self.data_logger.pickle(
-            self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
-            copy.copy(self.algorithm)
-        )
-        self.data_logger.pickle(
-            self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
-            copy.copy(traj_sample_lists)
-        )
-        if pol_sample_lists:
-            self.data_logger.pickle(
-                self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
-                copy.copy(pol_sample_lists)
-            )
+        # self.data_logger.pickle(
+        #     self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
+        #     copy.copy(self.algorithm)
+        # )
+        # self.data_logger.pickle(
+        #     self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
+        #     copy.copy(traj_sample_lists)
+        # )
+        # if pol_sample_lists:
+        #     self.data_logger.pickle(
+        #         self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
+        #         copy.copy(pol_sample_lists)
+        #     )
 
     def _end(self):
         """ Finish running and exit. """
@@ -272,6 +287,7 @@ class GPSMain(object):
 
 def main():
     """ Main function to be run. """
+
     parser = argparse.ArgumentParser(description='Run the Guided Policy Search algorithm.')
     parser.add_argument('experiment', type=str,
                         help='experiment name')
@@ -336,7 +352,6 @@ def main():
     if not os.path.exists(hyperparams_file):
         sys.exit("Experiment '%s' does not exist.\nDid you create '%s'?" %
                  (exp_name, hyperparams_file))
-
     hyperparams = imp.load_source('hyperparams', hyperparams_file)
     if args.targetsetup:
         try:

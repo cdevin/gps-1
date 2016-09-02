@@ -1,6 +1,7 @@
 #include "gps_agent_pkg/sensor.h"
 #include "gps_agent_pkg/encodersensor.h"
 #include "gps_agent_pkg/rostopicsensor.h"
+#include "gps_agent_pkg/camerasensor.h"
 
 using namespace gps_control;
 
@@ -11,10 +12,10 @@ Sensor* Sensor::create_sensor(SensorType type, ros::NodeHandle& n, RobotPlugin *
     {
     case EncoderSensorType:
         return (Sensor *) (new EncoderSensor(n,plugin,actuator_type));
-    /*
+
     case CameraSensorType:
-        return CameraSensor(n,plugin);
-    */
+      return (Sensor *) (new CameraSensor(n,plugin));
+
     case ROSTopicSensorType:
 	return (Sensor *) (new ROSTopicSensor(n,plugin));
 

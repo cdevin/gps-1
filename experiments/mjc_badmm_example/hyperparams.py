@@ -7,6 +7,7 @@ import os.path
 import numpy as np
 
 from gps import __file__ as gps_filepath
+
 from gps.agent.mjc.agent_mjc import AgentMuJoCo
 from gps.algorithm.algorithm_badmm import AlgorithmBADMM
 from gps.algorithm.cost.cost_fk import CostFK

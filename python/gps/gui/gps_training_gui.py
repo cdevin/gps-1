@@ -332,10 +332,13 @@ class GPSTrainingGUI(object):
             if isinstance(algorithm, AlgorithmBADMM):
                 kl_div_i = algorithm.cur[m].pol_info.init_kl.mean()
                 kl_div_f = algorithm.cur[m].pol_info.prev_kl.mean()
-                itr_data += ' %8.2f %8.2f %8.2f' % (pol_costs[m], kl_div_i, kl_div_f)
+                if pol_sample_lists is not None:
+                    itr_data += ' %8.2f %8.2f %8.2f' % (pol_costs[m], kl_div_i, kl_div_f)
+                else:
+                    itr_data += ' %8.2f %8.2f' % (kl_div_i, kl_div_f)
             elif isinstance(algorithm, AlgorithmMDGPS):
                 # TODO: Change for test/train better.
-                if test_idx == algorithm._hyperparams['train_conditions']:
+                if test_idx == algorithm._hyperparams['train_conditions'] and pol_sample_lists is not None:
                     itr_data += ' %8.2f' % (pol_costs[m])
                 else:
                     itr_data += ' %8s' % ("N/A")

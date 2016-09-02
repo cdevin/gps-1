@@ -17,11 +17,14 @@ namespace gps_control
     private:
 	// Latest data vector.
 	std::vector<double> latest_data_;
+	std::vector<double> previous_data_;
+	std::vector<double> cached_data_;
 	Eigen::VectorXd latest_data_eigen_;
 	// Subscribers
 	ros::Subscriber subscriber_;
 	// Vector dimension
 	int data_size_;
+	int previous_data_t_; 
 	std::string topic_name_;
     public:
 	// Constructor.

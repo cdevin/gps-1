@@ -18,7 +18,6 @@ LinearGaussianController::~LinearGaussianController()
 
 
 void LinearGaussianController::get_action(int t, const Eigen::VectorXd &X, const Eigen::VectorXd &obs, Eigen::VectorXd &U){
-    // Noise usually contained in k_
     U = K_[t]*X+k_[t];
 }
 

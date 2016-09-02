@@ -2,7 +2,6 @@
 import copy
 import logging
 import tempfile
-
 import numpy as np
 
 import caffe

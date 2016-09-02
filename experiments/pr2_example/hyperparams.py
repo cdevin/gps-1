@@ -50,9 +50,9 @@ common = {
             datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
     'experiment_dir': EXP_DIR,
     'data_files_dir': EXP_DIR + 'data_files/',
-    'target_filename': EXP_DIR + 'target.npz',
+    'target_filename': EXP_DIR + 'target_blocks.npz',
     'log_filename': EXP_DIR + 'log.txt',
-    'conditions': 1,
+    'conditions': 8,
 }
 
 # TODO(chelsea/zoe) : Move this code to a utility function
@@ -60,15 +60,15 @@ common = {
 for i in xrange(common['conditions']):
 
     ja_x0, ee_pos_x0, ee_rot_x0 = load_pose_from_npz(
-        common['target_filename'], 'trial_arm', str(i), 'initial'
+        common['target_filename'], 'trial_arm', str(0), 'initial'
     )
     ja_aux, _, _ = load_pose_from_npz(
-        common['target_filename'], 'auxiliary_arm', str(i), 'initial'
+        common['target_filename'], 'auxiliary_arm', str(0), 'initial'
     )
     _, ee_pos_tgt, ee_rot_tgt = load_pose_from_npz(
-        common['target_filename'], 'trial_arm', str(i), 'target'
+        common['target_filename'], 'trial_arm', str(i%4), 'target'
     )
-
+    print ee_pos_tgt
     x0 = np.zeros(32)
     x0[:7] = ja_x0
     x0[14:(14+3*EE_POINTS.shape[0])] = np.ndarray.flatten(
@@ -190,7 +190,7 @@ config = {
     'agent': agent,
     'gui_on': True,
     'algorithm': algorithm,
-    'num_samples': 5,
+    'num_samples': 2,
 }
 
 common['info'] = generate_experiment_info(config)
