@@ -24,7 +24,7 @@ enum SensorType
 {
     EncoderSensorType = 0,
     ROSTopicSensorType = 1,
-    CameraSensorType,
+    CameraSensorType = 2,
     TotalSensorTypes
 };
 

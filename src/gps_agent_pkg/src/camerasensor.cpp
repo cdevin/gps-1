@@ -1,4 +1,5 @@
 #include "gps_agent_pkg/camerasensor.h"
+#include <math.h>
 
 using namespace gps_control;
 
@@ -7,10 +8,11 @@ CameraSensor::CameraSensor(ros::NodeHandle& n, RobotPlugin *plugin): Sensor(n, p
 {
     // Initialize subscribers
     if (!n.getParam("rgb_topic",rgb_topic_name_))
-        rgb_topic_name_ = "/camera/rgb/image_color";
+        // rgb_topic_name_ = "/camera/rgb/image_color";
+	rgb_topic_name_ = "/wide_stereo/right/image_rect_color";
     if (!n.getParam("depth_topic",depth_topic_name_))
         depth_topic_name_ = "/camera/depth_registered/image_raw";
-
+    rgb_topic_name_ = "/wide_stereo/right/image_rect_color";
     if (!rgb_topic_name_.empty())
       rgb_subscriber_ = n.subscribe(rgb_topic_name_, 1, &CameraSensor::update_rgb_image, this);
     if (!depth_topic_name_.empty())
@@ -70,7 +72,11 @@ void CameraSensor::update_rgb_image(const sensor_msgs::Image::ConstPtr& msg) {
                 {
                     for (int c = 0; c < 3; c++)
                     {
-                        latest_rgb_image_[(y-y_start)*image_width_*3 + (x-x_start)*3 + c] = msg->data[y*image_width_init_*3 + x*3 + c];
+			int val = 2*(y*image_width_init_*3*2 + x*3) + c;
+                        latest_rgb_image_[(y-y_start)*image_width_*3 + (x-x_start)*3 + c] = (double) msg->data[2*(y*image_width_init_*3*2 + x*3) + c];
+			// if (isnan(msg->data[2*(y*image_width_init_*3 + x*3) + c])) {
+			//     ROS_ERROR("data %d is nan %d", 2*(y*image_width_init_*3 + x*3) + c, msg->data[2*(y*image_width_init_*3 + x*3) + c]);
+			// }
                     }
                 }
             }
@@ -102,7 +108,7 @@ void CameraSensor::update_depth_image(const sensor_msgs::Image::ConstPtr& msg) {
             {
                 if (y >= y_start && y < y_start+image_height_)
                 {
-                    latest_depth_image_[(y-y_start)*image_width_ + (x-x_start)] = msg->data[y*image_width_init_ + x];
+                    latest_depth_image_[(y-y_start)*image_width_ + (x-x_start)] = (double)msg->data[y*image_width_init_ + x];
                 }
             }
         }
@@ -122,23 +128,28 @@ void CameraSensor::configure_sensor(const OptionsMap &options)
 }
 
 // Set data format and meta data on the provided sample.
-void CameraSensor::set_sample_data_format(boost::scoped_ptr<Sample> sample) const
+void CameraSensor::set_sample_data_format(boost::scoped_ptr<Sample>& sample)
 {
     // Set image size and format.
     OptionsMap rgb_metadata;
-    sample->set_meta_data(gps::RGB_IMAGE,image_size_*3,SampleDataFormatUInt8,rgb_metadata);
+    //sample->set_meta_data(gps::RGB_IMAGE,image_size_*3,SampleDataFormatUInt8,rgb_metadata);
+    sample->set_meta_data(gps::RGB_IMAGE,image_size_*3,SampleDataFormatEigenVector,rgb_metadata);
 
     // Set joint velocities size and format.
-    OptionsMap depth_metadata;
-    sample->set_meta_data(gps::DEPTH_IMAGE,image_size_*2,SampleDataFormatUInt16,depth_metadata);
+    //OptionsMap depth_metadata;
+    //sample->set_meta_data(gps::DEPTH_IMAGE,image_size_*2,SampleDataFormatUInt16,depth_metadata);
+    // sample->set_meta_data(gps::DEPTH_IMAGE,image_size_*2,SampleDataFormatEigenVector,depth_metadata);
 }
 
 // Set data on the provided sample.
-void CameraSensor::set_sample_data(boost::scoped_ptr<Sample> sample) const
+void CameraSensor::set_sample_data(boost::scoped_ptr<Sample>& sample, int t)
 {
     // Set rgb image.
-    sample->set_data(0,gps::RGB_IMAGE,&latest_rgb_image_[0],latest_rgb_image_.size(),SampleDataFormatUInt8);
-
+    // sample->set_data(0,gps::RGB_IMAGE,&latest_rgb_image_[0],latest_rgb_image_.size(),SampleDataFormatUInt8);
+    // // Set depth image.
+    // sample->set_data(0,gps::DEPTH_IMAGE,&latest_depth_image_[0],latest_depth_image_.size(),SampleDataFormatUInt16);
+    
+    sample->set_data_vector(t,gps::RGB_IMAGE,&latest_rgb_image_[0],latest_rgb_image_.size(),SampleDataFormatEigenVector);
     // Set depth image.
-    sample->set_data(0,gps::DEPTH_IMAGE,&latest_depth_image_[0],latest_depth_image_.size(),SampleDataFormatUInt16);
+    //  sample->set_data_vector(t,gps::DEPTH_IMAGE,&latest_depth_image_[0],latest_depth_image_.size(),SampleDataFormatEigenVector);
 }

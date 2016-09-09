@@ -10,7 +10,7 @@ ROSTopicSensor::ROSTopicSensor(ros::NodeHandle& n, RobotPlugin *plugin): Sensor(
 	topic_name_ = "/caffe_features_publisher";
     // Initialize data vector.
     ROS_INFO("init rostopic sensor, topic is %s", topic_name_.c_str());
-    data_size_ = 64;
+    data_size_ = 64*2; // 32*2 for pos and 32*2 for vel
     latest_data_.resize(data_size_);
     latest_data_eigen_.resize(data_size_);
     subscriber_ = n.subscribe(topic_name_, 1, &ROSTopicSensor::update_data_vector, this);
@@ -24,14 +24,23 @@ ROSTopicSensor::~ROSTopicSensor()
 void ROSTopicSensor::update_data_vector(const std_msgs::Float64MultiArray::ConstPtr& msg) {
     if (latest_data_.empty()) {
 	ROS_INFO("latest data empty, dim size %d", msg->layout.dim[0].size);
-	data_size_ = msg->layout.dim[0].size;
+	data_size_ = msg->layout.dim[0].size*2;
 	latest_data_.resize(data_size_);
 	latest_data_eigen_.resize(data_size_);
     } else { // better way to make this assertion? (error message?)
 	assert(latest_data_.size() == data_size_);
-	assert(msg->layout.dim[0].size == data_size_);
+	assert(msg->layout.dim[0].size*2 == data_size_);
     }
-    for (int i = 0; i < data_size_; i++)
+    for (int i = 64; i < data_size_; i++)
+	{
+	    if (isnan(msg->data[i]-64)) {
+		    ROS_ERROR("data %d is nan %e", i, msg->data[i-64]);
+		}
+	    latest_data_[i] = latest_data_[i]-msg->data[i-64];
+	    latest_data_eigen_[i] =latest_data_eigen_[i] -msg->data[i-64];
+	}
+
+    for (int i = 0; i < 64; i++)
 	{
 	    if (isnan(msg->data[i])) {
 		    ROS_ERROR("data %d is nan %e", i, msg->data[i]);

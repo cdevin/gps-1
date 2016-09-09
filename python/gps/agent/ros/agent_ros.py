@@ -167,7 +167,7 @@ class AgentROS(Agent):
         trial_command.ee_points_tgt = \
                 self._hyperparams['ee_points_tgt'][condition].tolist()
         trial_command.state_datatypes = self._hyperparams['state_include']
-        trial_command.obs_datatypes = self._hyperparams['state_include']
+        trial_command.obs_datatypes = self._hyperparams['obs_include']
 
         if self.use_tf is False:
             sample_msg = self._trial_service.publish_and_wait(
@@ -176,6 +176,8 @@ class AgentROS(Agent):
             sample = msg_to_sample(sample_msg, self)
             if save:
                 self._samples[condition].append(sample)
+            # if 16 in self._hyperparams['obs_include']:
+            #     print "sum of feature points", sample.get(16).shape
             return sample
         else:
             self._trial_service.publish(trial_command)

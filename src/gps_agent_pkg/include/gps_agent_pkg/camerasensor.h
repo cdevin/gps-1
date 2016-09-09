@@ -26,8 +26,10 @@ class CameraSensor: public Sensor
 {
 private:
     // Latest image.
-    std::vector<uint8_t> latest_rgb_image_;
-    std::vector<uint16_t> latest_depth_image_;
+    /* std::vector<uint8_t> latest_rgb_image_; */
+    /* std::vector<uint16_t> latest_depth_image_; */
+    std::vector<double> latest_rgb_image_;
+    std::vector<double> latest_depth_image_;
 
     // Time at which the image was first published.
     ros::Time latest_rgb_time_, latest_depth_time_;
@@ -53,9 +55,9 @@ public:
     // This function is used to set resolution, cropping, topic to listen to...
     virtual void configure_sensor(const OptionsMap &options);
     // Set data format and meta data on the provided sample.
-    virtual void set_sample_data_format(boost::scoped_ptr<Sample> sample) const;
+    virtual void set_sample_data_format(boost::scoped_ptr<Sample>& sample);
     // Set data on the provided sample.
-    virtual void set_sample_data(boost::scoped_ptr<Sample> sample) const;
+    virtual void set_sample_data(boost::scoped_ptr<Sample>& sample, int t);
 };
 
 }

@@ -12,6 +12,7 @@ import copy
 import argparse
 import threading
 import time
+import IPython
 
 # Add gps/python to path so that imports work.
 sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
@@ -59,12 +60,18 @@ class GPSMain(object):
             for cond in self._train_idx:
                 for i in range(self._hyperparams['num_samples']):
                     self._take_sample(itr, cond, i)
-
             traj_sample_lists = [
                 self.agent.get_samples(cond, -self._hyperparams['num_samples'])
                 for cond in self._train_idx
             ]
             self._take_iteration(itr, traj_sample_lists)
+            for c in range(len(traj_sample_lists)):
+                data['image_cond_'+str(c)] = traj_sample_lists[c].get(RGB_IMAGE)
+                #data['blocks_cond_'+str(c)] = np.repeat(np.reshape(all_poses[c], (1,12)), 100, axis=0)
+            self.data_logger.pickle(
+                self._data_files_dir + ('block_images_itr_%02d.pkl' % itr),
+                copy.copy(data)
+                )
             pol_sample_lists = self._take_policy_samples()
             self._log_data(itr, traj_sample_lists, pol_sample_lists)
 
@@ -115,7 +122,7 @@ class GPSMain(object):
                 self.gui.set_status_text('Press \'go\' to begin.')
             return 0
         else:
-            algorithm_file = self._data_files_dir + 'algorithm_i_%02d.pkl' % itr_load
+            algorithm_file = self._data_files_dir + 'algorithm_itr_%02d.pkl' % itr_load
             self.algorithm = self.data_logger.unpickle(algorithm_file)
             if self.algorithm is None:
                 print("Error: cannot find '%s.'" % algorithm_file)
