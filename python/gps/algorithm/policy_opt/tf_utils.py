@@ -71,18 +71,19 @@ class TfSolver:
             raise NotImplementedError('learning rate policies other than fixed are not implemented')
 
         self.weight_decay = weight_decay
-        if weight_decay is not None:
-            trainable_vars = tf.trainable_variables()
-            loss_with_reg = self.loss_scalar
-            for var in trainable_vars:
-                loss_with_reg += self.weight_decay*tf.nn.l2_loss(var)
-            self.loss_scalar = loss_with_reg
+        self.variables = tf.trainable_variables()
+        # if weight_decay is not None:
+        #     trainable_vars = tf.trainable_variables()
+        #     loss_with_reg = self.loss_scalar
+        #     for var in trainable_vars:
+        #         loss_with_reg += self.weight_decay*tf.nn.l2_loss(var)
+        #     self.loss_scalar = loss_with_reg
 
         self.solver_op = self.get_solver_op()
 
     def get_solver_op(self):
         solver_string = self.solver_name.lower()
-        if solver_string == 'adam':
+        if True: #solver_string == 'adam':
             return tf.train.AdamOptimizer(learning_rate=self.base_lr,
                                           beta1=self.momentum).minimize(self.loss_scalar)
         elif solver_string == 'rmsprop':

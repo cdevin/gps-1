@@ -1,0 +1,26 @@
+<?xml version="1" encoding="utf-8"?>
+<launch>
+<node pkg="nodelet" type="nodelet"
+      args="standalone image_proc/crop_decimate"
+      name="my_decimator">
+  <!-- offset before scaling -->
+  <param name="x_offset" type="int" value="80" />
+  <param name="y_offset" type="int" value="0" />
+
+  <!-- how much to scale -->
+  <param name="decimation_x" type="int" value="2" />
+  <param name="decimation_y" type="int" value="2" />
+
+  <!-- size after cropping but before scaling -->
+  <param name="width" type="int" value="480" />
+  <param name="height" type="int" value="480" />
+
+  <!-- remap input topics -->
+  <remap from="camera/image_raw" to="wide_stereo/right/image_rect_color"/>
+  <remap from="camera/image_info" to="wide_stereo/right/camera_info"/>
+
+  <!-- remap output topics -->
+  <remap from="camera_out/image_raw" to="/camera_crop/image_rect_color"/>
+  <remap from="camera_out/image_info" to="/camera_crop/camera_info"/>
+</node>
+</launch>

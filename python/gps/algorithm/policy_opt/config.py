@@ -1,8 +1,9 @@
 """ Default configuration for policy optimization. """
-try:
-    from gps.algorithm.policy_opt.policy_opt_utils import construct_fc_network
-except ImportError:
-    construct_fc_network = None
+# try:
+#     from gps.algorithm.policy_opt.policy_opt_utils import construct_fc_network
+# except ImportError:
+#     
+construct_fc_network = None
 
 import os
 

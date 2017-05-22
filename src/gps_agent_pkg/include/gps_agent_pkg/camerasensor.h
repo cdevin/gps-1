@@ -14,7 +14,7 @@ Camera sensor: records latest images from camera.
 // DepthImage
 
 // Default values for image dimensions
-#define IMAGE_WIDTH_INIT 320
+#define IMAGE_WIDTH_INIT 240
 #define IMAGE_HEIGHT_INIT 240
 #define IMAGE_WIDTH 240
 #define IMAGE_HEIGHT 240

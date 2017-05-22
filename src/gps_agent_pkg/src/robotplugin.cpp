@@ -355,6 +355,7 @@ void RobotPlugin::trial_subscriber_callback(const gps_agent_pkg::TrialCommand::C
     controller_params["state_datatypes"] = state_datatypes;
     obs_datatypes.resize(msg->obs_datatypes.size());
     for(int i=0; i<obs_datatypes.size(); i++){
+      ROS_INFO("obs datatype %d", msg->obs_datatypes[i]);
         obs_datatypes[i] = msg->obs_datatypes[i];
     }
     controller_params["obs_datatypes"] = obs_datatypes;

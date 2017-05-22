@@ -61,5 +61,6 @@ void TfController::configure_controller(OptionsMap &options)
 }
 
 void TfController::publish_obs(Eigen::VectorXd obs, RobotPlugin *plugin){
+  ROS_INFO("in tf publish obs");
     plugin ->tf_publish_obs(obs);
 }

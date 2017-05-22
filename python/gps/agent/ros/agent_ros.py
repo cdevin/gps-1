@@ -18,7 +18,11 @@ try:
 except ImportError:  # user does not have tf installed.
     TfPolicy = None
 
-
+FEATURE_PRUNES = sorted([8,9,38,38,52,53, #2,3,8,9,10,11,28,29,38,39,52,53,54,55,60,61, # blue
+                         0,1,# 34,35,40,41,#red
+                         16,17,#22,23,62,63]) #yellow
+                         ])
+FEATURE_PRUNES = range(64)
 
 class AgentROS(Agent):
     """
@@ -137,7 +141,8 @@ class AgentROS(Agent):
                        condition_data[AUXILIARY_ARM]['data'])
         time.sleep(2.0)  # useful for the real robot, so it stops completely
 
-    def sample(self, policy, condition, verbose=True, save=True, noisy=True):
+    def sample(self, policy, condition, verbose=True, save=True, noisy=True,
+               block_pos = None):
         """
         Reset and execute a policy and collect a sample.
         Args:
@@ -172,7 +177,7 @@ class AgentROS(Agent):
         trial_command.ee_points_tgt = \
                 self._hyperparams['ee_points_tgt'][condition].tolist()
         trial_command.state_datatypes = self._hyperparams['state_include']
-        trial_command.obs_datatypes = self._hyperparams['state_include']
+        trial_command.obs_datatypes = self._hyperparams['obs_include'] 
 
         if self.use_tf is False:
             sample_msg = self._trial_service.publish_and_wait(
@@ -181,25 +186,37 @@ class AgentROS(Agent):
             sample = msg_to_sample(sample_msg, self)
             if save:
                 self._samples[condition].append(sample)
+            import IPython
+            IPython.embed()
+            sample._data[16] = np.repeat(sample._data[16][:1,FEATURE_PRUNES], 100, axis=0)
+            #sample._data[16] = np.repeat(sample._data[16][:1,:], 100, axis=0)
+            #sample._data[16] = np.repeat(np.array([block_pos]), 100, axis=0)
+            print "in sample", sample._data[16]
             return sample
         else:
             self._trial_service.publish(trial_command)
-            sample_msg = self.run_trial_tf(policy, time_to_run=self._hyperparams['trial_timeout'])
+            sample_msg = self.run_trial_tf(policy, time_to_run=self._hyperparams['trial_timeout'],
+                                           block_pos=block_pos)
             sample = msg_to_sample(sample_msg, self)
             if save:
                 self._samples[condition].append(sample)
             return sample
 
-    def run_trial_tf(self, policy, time_to_run=5):
+    def run_trial_tf(self, policy, time_to_run=5, block_pos = None):
         """ Run an async controller from a policy. The async controller receives observations from ROS subscribers
          and then uses them to publish actions."""
         should_stop = False
         consecutive_failures = 0
         start_time = time.time()
+        first_features = block_pos#None
         while should_stop is False:
             if self.observations_stale is False:
                 consecutive_failures = 0
-                last_obs = tf_obs_msg_to_numpy(self._tf_subscriber_msg)
+                last_obs = tf_obs_msg_to_numpy(self._tf_subscriber_msg, features=FEATURE_PRUNES)
+                if first_features is not None:
+                    last_obs[32:] = first_features
+                else:
+                    first_features = last_obs[32:]
                 action_msg = tf_policy_to_action_msg(self.dU,
                                                      self._get_new_action(policy, last_obs),
                                                      self.current_action_id)
@@ -217,6 +234,10 @@ class AgentROS(Agent):
         return result  # the trial has completed. Here is its message.
 
     def _get_new_action(self, policy, obs):
+        #print "features", obs[32:]
+        if 'other_gazebo' in self._hyperparams:
+            print "OTHER_GAZEBO"
+            return np.array([0.6, 1.5, 1.8, 1.8, -0.7, -1.2, 0.9])*policy.act(None, obs, None, None)
         return policy.act(None, obs, None, None)
 
     def _tf_callback(self, message):

@@ -12,11 +12,12 @@ CameraSensor::CameraSensor(ros::NodeHandle& n, RobotPlugin *plugin): Sensor(n, p
 	rgb_topic_name_ = "/wide_stereo/right/image_rect_color";
     if (!n.getParam("depth_topic",depth_topic_name_))
         depth_topic_name_ = "/camera/depth_registered/image_raw";
-    rgb_topic_name_ = "/wide_stereo/right/image_rect_color";
+    rgb_topic_name_ = "/camera_crop/image_rect_color";
+    //rgb_topic_name_ = "/wide_stereo/right/image_rect_color";
     if (!rgb_topic_name_.empty())
       rgb_subscriber_ = n.subscribe(rgb_topic_name_, 1, &CameraSensor::update_rgb_image, this);
-    if (!depth_topic_name_.empty())
-      depth_subscriber_ = n.subscribe(depth_topic_name_, 1, &CameraSensor::update_depth_image, this);
+    // if (!depth_topic_name_.empty())
+    //   depth_subscriber_ = n.subscribe(depth_topic_name_, 1, &CameraSensor::update_depth_image, this);
 
     // Initialize image config specs - image_width_init_, image_width_, etc.
     if (!n.getParam("image_width",image_width_))
@@ -33,7 +34,7 @@ CameraSensor::CameraSensor(ros::NodeHandle& n, RobotPlugin *plugin): Sensor(n, p
     latest_rgb_image_.resize(image_size_*3,0);
 
     // Initialize depth image.
-    latest_depth_image_.resize(image_size_,0);
+    // latest_depth_image_.resize(image_size_,0);
 
     // Set time.
     latest_rgb_time_ = ros::Time(0.0);
@@ -57,34 +58,12 @@ void CameraSensor::update_rgb_image(const sensor_msgs::Image::ConstPtr& msg) {
     // Check message dimensions.
     assert(msg->width == image_width_init_ && msg->height == image_height_init_);
 
-    int x_start = (image_width_init_ - image_width_) / 2;
-    int y_start = (image_height_init_ - image_height_) / 2;
-
-    // Store the image, cropping middle region according to image width and image height
-    /* TODO - this could be done more efficiently. */
-    for (int y = 0; y < image_height_init_; y++)
+    // Incoming image is the right size
+    for (int i = 0; i < 3*image_size_; i++)
     {
-        for (int x = 0; x < image_width_init_; x++)
-        {
-            if (x >= x_start && x < x_start+image_width_)
-            {
-                if (y >= y_start && y < y_start+image_height_)
-                {
-                    for (int c = 0; c < 3; c++)
-                    {
-			int val = 2*(y*image_width_init_*3*2 + x*3) + c;
-                        latest_rgb_image_[(y-y_start)*image_width_*3 + (x-x_start)*3 + c] = (double) msg->data[2*(y*image_width_init_*3*2 + x*3) + c];
-			// if (isnan(msg->data[2*(y*image_width_init_*3 + x*3) + c])) {
-			//     ROS_ERROR("data %d is nan %d", 2*(y*image_width_init_*3 + x*3) + c, msg->data[2*(y*image_width_init_*3 + x*3) + c]);
-			// }
-                    }
-                }
-            }
-        }
+      latest_rgb_image_[i] = (double) msg->data[i];
     }
 }
-
-// Callback from camera sensor. Crops and updates the stored depth image
 void CameraSensor::update_depth_image(const sensor_msgs::Image::ConstPtr& msg) {
     latest_depth_time_ = msg->header.stamp;
     if (latest_depth_image_.empty()) {
@@ -108,12 +87,13 @@ void CameraSensor::update_depth_image(const sensor_msgs::Image::ConstPtr& msg) {
             {
                 if (y >= y_start && y < y_start+image_height_)
                 {
-                    latest_depth_image_[(y-y_start)*image_width_ + (x-x_start)] = (double)msg->data[y*image_width_init_ + x];
+                    latest_depth_image_[(y-y_start)*image_width_ + (x-x_start)] = msg->data[y*image_width_init_ + x];
                 }
             }
         }
     }
 }
+
 
 // Update the sensor (called every tick).
 void CameraSensor::update(RobotPlugin *plugin, ros::Time current_time, bool is_controller_step)

@@ -59,12 +59,12 @@ class AlgorithmBADMM(Algorithm):
                 # Update the policy.
                 self._update_policy(inner_itr)
             for m in range(self.M):
-                self._update_policy_fit(m)  # Update policy priors.
+                self._update_policy_fit(m) # Update policy priors.
             if self.iteration_count > 0 or inner_itr > 0:
                 step = (inner_itr == self._hyperparams['inner_iterations'] - 1)
                 # Update dual variables.
                 for m in range(self.M):
-                    self._policy_dual_step(m, step=step)
+                   self._policy_dual_step(m, step=step)
             self._update_trajectories()
 
         self._advance_iteration_variables()

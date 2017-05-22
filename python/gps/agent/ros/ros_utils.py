@@ -30,6 +30,9 @@ def msg_to_sample(ros_msg, agent):
         sensor_id = sensor.data_type
         shape = np.array(sensor.shape)
         data = np.array(sensor.data).reshape(shape)
+        # if sensor == 16:
+        #     sample.set(sensor_id, data[:,:8])
+        # else:
         sample.set(sensor_id, data)
     return sample
 
@@ -81,9 +84,9 @@ def tf_policy_to_action_msg(deg_action, action, action_id):
         return msg
 
 
-def tf_obs_msg_to_numpy(obs_message):
+def tf_obs_msg_to_numpy(obs_message, features =range(64)):
     # ToDo: Reshape this if needed.
-    return np.array(obs_message.data)
+    return np.array(obs_message.data)[range(32)+[i+32 for i in features]]
 
 
 class TimeoutException(Exception):

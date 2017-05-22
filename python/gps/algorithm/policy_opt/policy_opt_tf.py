@@ -1,7 +1,7 @@
 """ This file defines policy optimization for a tensorflow policy. """
 import copy
 import logging
-
+import pickle
 import numpy as np
 
 # NOTE: Order of these imports matters for some reason.
@@ -59,6 +59,32 @@ class PolicyOptTf(PolicyOpt):
             i += dim
         init_op = tf.initialize_all_variables()
         self.sess.run(init_op)
+
+        # import pickle
+        # val_vars, pol_var = pickle.load(open('/home/coline/abhishek_gps/gps/pr2_badmm_grid1.pkl', 'rb'))
+        # #val_vars, pol_var = pickle.load(open('/home/coline/abhishek_gps/gps/pr2_badmm_largebot1.pkl', 'rb'))
+        # size = 60
+        # self.policy.scale = np.eye(size)
+        # self.policy.bias = np.zeros((size,))
+        # self.policy.x_idx = range(size)
+        # self.av = {v.name : v for v in self.solver.variables}
+        # self.var = pol_var[0]#[pol_var[-2]]
+        # # import IPython
+        # # IPython.embed()
+        # for k,v in self.av.iteritems():
+        #     print "tried to assign", k
+        #     for n in val_vars:
+        #         if n in k:
+        #             print "assigning", k, n
+        #             assign_op = v.assign(val_vars[n])
+        #             self.sess.run(assign_op)
+        # for k,v in self.av.iteritems():
+        #     print "tried to assign", k
+        #     for n in vars:
+        #         if n in k:
+        #             print "assigning", k, n
+        #             assign_op = v.assign(val_vars[n])
+        #             self.sess.run(assign_op)
 
     def init_network(self):
         """ Helper method to initialize the tf networks used """
@@ -136,8 +162,14 @@ class PolicyOptTf(PolicyOpt):
         idx = range(N*T)
         average_loss = 0
         np.random.shuffle(idx)
-
+        # import IPython
+        # IPython.embed()
         # actual training.
+        # from gps.utility.data_logger import DataLogger
+        # d = DataLogger()
+        # obs, tgt_mu, tgt_prc, tgt_wt = d.unpickle('/home/coline/master_gps/gps/data_2.pkl')
+        # idx = d.unpickle("/home/coline/idx.pkl")
+        # batches_per_epoch_reshaped = 60.0
         for i in range(self._hyperparams['iterations']):
             # Load in data for this batch.
             start_idx = int(i * self.batch_size %
@@ -152,7 +184,7 @@ class PolicyOptTf(PolicyOpt):
             if (i+1) % 500 == 0:
                 LOGGER.debug('tensorflow iteration %d, average loss %f',
                              i+1, average_loss / 500)
-                print ('supervised tf loss is ' + str(average_loss))
+                print ('supervised tf loss is ' + str(average_loss/500))
                 average_loss = 0
 
         # Keep track of tensorflow iterations for loading solver states.
@@ -206,6 +238,13 @@ class PolicyOptTf(PolicyOpt):
 
     # For pickling.
     def __getstate__(self):
+        vars = {}
+        print "getstate"
+        for v in self.solver.variables:
+            vars[v.name] = self.sess.run(v)
+        data_dump =[vars, self.var]
+        with open('weights_pr2_blocks.pkl','wb') as f:
+            pickle.dump(data_dump, f)
         return {
             'hyperparams': self._hyperparams,
             'dO': self._dO,
@@ -226,4 +265,4 @@ class PolicyOptTf(PolicyOpt):
 
         saver = tf.train.Saver()
         check_file = self.checkpoint_file
-        saver.restore(self.sess, check_file)
+        #saver.restore(self.sess, check_file)

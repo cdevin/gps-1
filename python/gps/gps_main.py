@@ -11,12 +11,21 @@ import copy
 import argparse
 import threading
 import time
+import numpy as np
 
 # Add gps/python to path so that imports work.
 sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
 from gps.gui.gps_training_gui import GPSTrainingGUI
 from gps.utility.data_logger import DataLogger
 from gps.sample.sample_list import SampleList
+from gps.sample.sample import Sample
+
+BLUE = 'blue_block.urdf'
+RED = 'red_block.urdf'
+YELLOW = 'yellow_block.urdf'
+GREEN = 'green_block.urdf'
+from gps.gui.target_setup_gui import load_pose_from_npz
+
 
 
 class GPSMain(object):
@@ -58,33 +67,68 @@ class GPSMain(object):
         Returns: None
         """
         itr_start = self._initialize(itr_load)
+        target = '/home/coline/master_gps/gps/experiments/block_badmm/target.npz'
+        alg = self.data_logger.unpickle('')
         import gps.gazebo.color_block as color
         poses = color.init_blocks()
-        all_poses = []
+        algorithm_file = '/home/coline/sim_samples/sim_algorithm.pkl' #self._data_files_dir + 'algorithm_itr_%02d.pkl' % 1
+        alg = self.data_logger.unpickle(algorithm_file)
+        for cond in  self._train_idx:
+            self.algorithm.cur[cond].traj_distr = alg.cur[cond].traj_distr
+        # import pickle
+        # val_vars, pol_var = pickle.load(open('/home/coline/abhishek_gps/gps/pr2_blocks_itr20000.pkl', 'rb'))
+        #self.policy_opt.var = [pol_var[-2]]
+        # for k,v in self.policy_opt.av.items():
+        #     if k in val_vars:
+        #         print(k)
+        #         assign_op = v.assign(val_vars[k])
+        #         self.policy_opt.sess.run(assign_op)
+        import IPython
+
         for itr in range(itr_start, self._hyperparams['iterations']):
+            import IPython
+            IPython.embed()
             for cond in self._train_idx:
-                poses = color.assign_poses()
-                all_poses.append(poses)
-
+                # _, ee_pos_tgt,_ = load_pose_from_npz(target, 'trial_arm', str(cond), 'target')
+                # preset = {YELLOW: ee_pos_tgt+np.array([-0.03,0,1.05])}
+               # preset = {YELLOW: ee_pos_tgt+np.array([-0.03,0,1.0])}
                 for i in range(self._hyperparams['num_samples']):
+                    # pose = color.assign_poses(preset=preset)
+                    #pos = np.reshape(pose, (12,))[[0,1,3,4,6,7,9,10]]
+                    # print pos
                     self._take_sample(itr, cond, i)
-
 
             traj_sample_lists = [
                 self.agent.get_samples(cond, -self._hyperparams['num_samples'])
                 for cond in self._train_idx
             ]
-           # self._take_iteration(itr, traj_sample_lists)
-            pol_sample_lists = self._take_policy_samples()
-            for c in range(len(traj_sample_lists)):
-                data['image_cond_'+str(c)] = traj_sample_lists[c].get(RGB_IMAGE)
-                data['blocks_cond_'+str(c)] = np.repeat(np.reshape(all_poses[c], (1,12)), 100, axis=0)
-            self.data_logger.pickle(
-                self._data_files_dir + ('block_images_itr_%02d.pkl' % itr),
-                copy.copy(data)
-            )
-            self._log_data(itr, traj_sample_lists, pol_sample_lists)
+           # traj_samples = self.data_logger.unpickle('/home/coline/sim_samples/test_red_samples.pkl')
+           # traj_samples = self.data_logger.unpickle('block_pruned_samples.pkl')
+            # new_traj_samples = []
+            # for m in range(3):
+            #     samples = traj_samples[m] #self.cur[m].sample_list
+            #     new_list = []
+            #     for sample in samples:
+            #         new = Sample(self.agent)
+            #         #new.set(16,sample._data[16][:,:64])
+            #         #new.set(16,np.repeat(sample.get(16)[:1,:64], 100, axis=0))
+            #         #new.set(16,np.repeat(sample.get(16)[:1,[2,3,8,9,10,11]], 100, axis=0))
+            #         for i in [0,1,2,3,4,5,6,7,8,9, 16]:
+            #             new.set(i, sample.get(i))
+            #         new_list.append(new)
+            #     samples = SampleList(new_list)
+            #     new_traj_samples.append(samples)
+            # traj_sample_lists = new_traj_samples
 
+            # import IPython
+            # IPython.embed()
+            #self._take_iteration(itr, traj_sample_lists)
+            pol_sample_lists = self._take_policy_samples()
+            self._log_data(itr, traj_sample_lists, pol_sample_lists)
+            # import IPython
+            # IPython.embed()
+            if itr % 5 == 0 and itr > 0:
+                IPython.embed()
         self._end()
 
     def test_policy(self, itr, N):
@@ -151,7 +195,7 @@ class GPSMain(object):
                     'Press \'go\' to begin.') % itr_load)
             return itr_load + 1
 
-    def _take_sample(self, itr, cond, i):
+    def _take_sample(self, itr, cond, i, block_pos = None):
         """
         Collect a sample from the agent.
         Args:
@@ -189,7 +233,7 @@ class GPSMain(object):
                 )
                 self.agent.sample(
                     pol, cond,
-                    verbose=(i < self._hyperparams['verbose_trials'])
+                    verbose=(i < self._hyperparams['verbose_trials']), block_pos = block_pos
                 )
 
                 if self.gui.mode == 'request' and self.gui.request == 'fail':
@@ -201,7 +245,7 @@ class GPSMain(object):
         else:
             self.agent.sample(
                 pol, cond,
-                verbose=(i < self._hyperparams['verbose_trials'])
+                verbose=(i < self._hyperparams['verbose_trials']), block_pos = block_pos,
             )
 
     def _take_iteration(self, itr, sample_lists):
@@ -238,10 +282,8 @@ class GPSMain(object):
         # Since this isn't noisy, just take one sample.
         # TODO: Make this noisy? Add hyperparam?
         # TODO: Take at all conditions for GUI?
-        for cond in range(len(self._test_idx)):
-            pol_samples[cond][0] = self.agent.sample(
-                self.algorithm.policy_opt.policy, self._test_idx[cond],
-                verbose=verbose, save=False, noisy=False)
+        for cond in range(len(self._train_idx)):
+            pol_samples[cond][0] = self.agent.sample(self.algorithm.policy_opt.policy, self._test_idx[cond],verbose=verbose, save=False, noisy=False)
         return [SampleList(samples) for samples in pol_samples]
 
     def _log_data(self, itr, traj_sample_lists, pol_sample_lists=None):
@@ -253,23 +295,23 @@ class GPSMain(object):
             pol_sample_lists: policy samples as SampleList object
         Returns: None
         """
-        if self.gui:
-            self.gui.set_status_text('Logging data and updating GUI.')
-            self.gui.update(itr, self.algorithm, self.agent,
-                traj_sample_lists, pol_sample_lists)
-            self.gui.save_figure(
-                self._data_files_dir + ('figure_itr_%02d.png' % itr)
-            )
+        # if self.gui:
+        #     self.gui.set_status_text('Logging data and updating GUI.')
+        #     self.gui.update(itr, self.algorithm, self.agent,
+        #         traj_sample_lists, pol_sample_lists)
+        #     self.gui.save_figure(
+        #         self._data_files_dir + ('figure_itr_%02d.png' % itr)
+        #     )
         if 'no_sample_logging' in self._hyperparams['common']:
             return
         # self.data_logger.pickle(
         #     self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
         #     copy.copy(self.algorithm)
         # )
-        # self.data_logger.pickle(
-        #     self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
-        #     copy.copy(traj_sample_lists)
-        # )
+        self.data_logger.pickle(
+            self._data_files_dir + ('traj_sample_yellow_itr_%02d.pkl' % itr),
+            copy.copy(traj_sample_lists)
+        )
         # if pol_sample_lists:
         #     self.data_logger.pickle(
         #         self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
@@ -314,7 +356,6 @@ def main():
     gps_dir = '/'.join(str.split(gps_filepath, '/')[:-3]) + '/'
     exp_dir = gps_dir + 'experiments/' + exp_name + '/'
     hyperparams_file = exp_dir + 'hyperparams.py'
-
     if args.silent:
         logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     else:
@@ -371,7 +412,7 @@ def main():
         import numpy as np
         import matplotlib.pyplot as plt
 
-        seed = hyperparams.config.get('random_seed', 0)
+        seed = hyperparams.config.get('random_seed', 89)
         random.seed(seed)
         np.random.seed(seed)
 
@@ -399,7 +440,7 @@ def main():
         import numpy as np
         import matplotlib.pyplot as plt
 
-        seed = hyperparams.config.get('random_seed', 0)
+        seed = hyperparams.config.get('random_seed', 55)
         random.seed(seed)
         np.random.seed(seed)
 
